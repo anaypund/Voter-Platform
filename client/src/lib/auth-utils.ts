@@ -3,15 +3,15 @@ export function isUnauthorizedError(error: Error): boolean {
 }
 
 // Redirect to login with a toast notification
-export function redirectToLogin(toast?: (options: { title: string; description: string; variant: string }) => void) {
+export function redirectToLogin(toast?: (options: any) => void) {
   if (toast) {
     toast({
       title: "Unauthorized",
-      description: "You are logged out. Logging in again...",
+      description: "You are logged out. Please log in again.",
       variant: "destructive",
     });
   }
   setTimeout(() => {
-    window.location.href = "/api/login";
+    window.location.href = "/";
   }, 500);
 }

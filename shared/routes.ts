@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { voterSchema, insertConfigSchema } from "./schema";
-import { insertUserSchema } from "./models/auth";
+import { voterSchema, insertConfigSchema, userSchema } from "./schema";
 
 export const api = {
   voters: {
@@ -52,9 +51,9 @@ export const api = {
   auth: {
     me: {
       method: "GET" as const,
-      path: "/api/user",
+      path: "/api/auth/user",
       responses: {
-        200: insertUserSchema.nullable(),
+        200: userSchema.nullable(),
       },
     }
   }

@@ -3,17 +3,31 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
+import { authRouter } from "./authRoutes";
+import { uploadRouter } from "./uploadRoutes";
+import { authMiddleware, adminMiddleware } from "./auth";
 import { spawn } from "child_process";
 import fs from "fs";
+import express from "express";
+import path from "path";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Auth Setup
-  await setupAuth(app);
-  registerAuthRoutes(app);
+  // Serve uploaded files as static
+  const uploadsDir = path.resolve(process.cwd(), "public/uploads");
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  app.use("/public/uploads", express.static(uploadsDir));
+
+  // Auth routes
+  app.use("/api/auth", authRouter);
+  app.use("/api/upload", uploadRouter);
+
+  // Protected routes middleware - apply to routes that need authentication
+  const requireAuth = authMiddleware;
 
   // Config
   app.get(api.config.get.path, async (req, res) => {
@@ -21,13 +35,20 @@ export async function registerRoutes(
     res.json(config || {}); 
   });
 
-  app.post(api.config.update.path, async (req, res) => {
-    const config = await storage.updateConfig(req.body);
-    res.json(config);
+  app.post(api.config.update.path, adminMiddleware, async (req: any, res: any) => {
+    try {
+      console.log("Config update endpoint called with body:", req.body);
+      const config = await storage.updateConfig(req.body);
+      console.log("Config updated successfully:", config);
+      res.json(config);
+    } catch (error: any) {
+      console.error("Config update error:", error);
+      res.status(500).json({ message: error.message });
+    }
   });
 
   // Voters
-  app.get(api.voters.search.path, async (req, res) => {
+  app.get(api.voters.search.path, requireAuth, async (req, res) => {
     const { type, query, subQuery } = req.query as any;
     try {
         const results = await storage.searchVoters(type, query, subQuery);
@@ -37,13 +58,13 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.voters.get.path, async (req, res) => {
+  app.get(api.voters.get.path, requireAuth, async (req, res) => {
     const voter = await storage.getVoter(req.params.id);
     if (!voter) return res.status(404).json({ message: "Not found" });
     res.json(voter);
   });
 
-  app.post(api.voters.printSlip.path, async (req, res) => {
+  app.post(api.voters.printSlip.path, requireAuth, async (req, res) => {
      const voter = await storage.getVoter(req.params.id);
      if (!voter) return res.status(404).json({ message: "Voter not found" });
 

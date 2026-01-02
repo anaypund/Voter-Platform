@@ -9,9 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertConfigSchema, type InsertAppConfig } from "@shared/schema";
-import { Loader2, Save, ArrowLeft, LogOut } from "lucide-react";
+import { Loader2, Save, ArrowLeft, LogOut, Upload } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { redirectToLogin } from "@/lib/auth-utils";
 
 export default function Admin() {
@@ -20,6 +20,11 @@ export default function Admin() {
   const updateConfig = useUpdateConfig();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>("");
+  const [bannerPreview, setBannerPreview] = useState<string>("");
+  const [uploading, setUploading] = useState(false);
 
   const form = useForm<InsertAppConfig>({
     resolver: zodResolver(insertConfigSchema),
@@ -30,12 +35,15 @@ export default function Admin() {
       isPublicAccess: false,
       logoUrl: "",
       headerBannerUrl: "",
+      printTemplate: "default",
     }
   });
 
-  // Redirect if not logged in
+  // Redirect if not logged in or not admin
   useEffect(() => {
-    if (!authLoading && !user) {
+    console.log("Auth status - user:", user, "isLoading:", authLoading, "isAdmin:", user?.isAdmin);
+    if (!authLoading && (!user || !user.isAdmin)) {
+      console.log("User not authenticated or not admin, redirecting");
       redirectToLogin(toast);
     }
   }, [user, authLoading, toast]);
@@ -43,24 +51,125 @@ export default function Admin() {
   // Update form values when config loads
   useEffect(() => {
     if (config) {
-      form.reset(config);
+      const configWithDefaults = {
+        partyName: config.partyName || "",
+        themeColor: config.themeColor || "#ff9933",
+        footerMessage: config.footerMessage || "",
+        isPublicAccess: config.isPublicAccess ?? false,
+        logoUrl: config.logoUrl || "",
+        headerBannerUrl: config.headerBannerUrl || "",
+        printTemplate: config.printTemplate || "default",
+      };
+      form.reset(configWithDefaults);
+      if (config.logoUrl) setLogoPreview(config.logoUrl);
+      if (config.headerBannerUrl) setBannerPreview(config.headerBannerUrl);
     }
   }, [config, form]);
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setBannerFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBannerPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadFile = async (file: File, field: "logo" | "banner"): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append(field, file);
+
+    try {
+      const response = await fetch(`/api/upload/${field}`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await response.json();
+      return data.url;
+    } catch (error) {
+      console.error(`Failed to upload ${field}:`, error);
+      return null;
+    }
+  };
+
   const onSubmit = async (data: InsertAppConfig) => {
     try {
-      await updateConfig.mutateAsync(data);
+      setUploading(true);
+      console.log("Form submitted with data:", data);
+      let updatedData = { ...data };
+
+      // Upload logo if a new file was selected
+      if (logoFile) {
+        console.log("Uploading logo...", logoFile);
+        const logoUrl = await uploadFile(logoFile, "logo");
+        console.log("Logo upload result:", logoUrl);
+        if (logoUrl) {
+          updatedData.logoUrl = logoUrl;
+        } else {
+          toast({
+            title: "Warning",
+            description: "Logo upload failed, using previous URL",
+            variant: "destructive",
+          });
+        }
+      }
+
+      // Upload banner if a new file was selected
+      if (bannerFile) {
+        console.log("Uploading banner...", bannerFile);
+        const bannerUrl = await uploadFile(bannerFile, "banner");
+        console.log("Banner upload result:", bannerUrl);
+        if (bannerUrl) {
+          updatedData.headerBannerUrl = bannerUrl;
+        } else {
+          toast({
+            title: "Warning",
+            description: "Banner upload failed, using previous URL",
+            variant: "destructive",
+          });
+        }
+      }
+
+      console.log("Updating config with data:", updatedData);
+      await updateConfig.mutateAsync(updatedData);
+      setLogoFile(null);
+      setBannerFile(null);
+      
       toast({
         title: "Configuration Saved",
         description: "Your changes have been applied successfully.",
         variant: "default",
       });
     } catch (error) {
+      console.error("Error saving config:", error);
       toast({
         title: "Error",
-        description: "Failed to save configuration.",
+        description: error instanceof Error ? error.message : "Failed to save configuration.",
         variant: "destructive",
       });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -72,7 +181,7 @@ export default function Admin() {
     );
   }
 
-  if (!user) return null; // Redirect handled in useEffect
+  if (!user || !user.isAdmin) return null; // Redirect handled in useEffect
 
   return (
     <div className="min-h-screen bg-muted/20 p-6 md:p-12 font-sans">
@@ -101,7 +210,15 @@ export default function Admin() {
           </Button>
         </div>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(
+          onSubmit, 
+          (errors) => {
+            console.error("Form validation errors:", errors);
+            Object.entries(errors).forEach(([key, error]: [string, any]) => {
+              console.error(`${key}: ${error?.message}`);
+            });
+          }
+        )} className="space-y-6">
           
           {/* General Settings */}
           <Card className="shadow-sm border-border/60">
@@ -157,22 +274,45 @@ export default function Admin() {
           <Card className="shadow-sm border-border/60">
             <CardHeader>
               <CardTitle>Branding & Images</CardTitle>
-              <CardDescription>Set URLs for logos and banners. Use external image hosting.</CardDescription>
+              <CardDescription>Upload logo and banner images directly from your device.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
+              {/* Logo Upload */}
               <div className="space-y-2">
-                <Label htmlFor="logoUrl">Logo URL</Label>
-                <Input id="logoUrl" {...form.register("logoUrl")} placeholder="https://example.com/logo.png" />
-                {form.watch("logoUrl") && (
-                  <div className="mt-2 p-2 bg-muted/30 rounded border inline-block">
-                    <img src={form.watch("logoUrl") || ""} alt="Logo Preview" className="h-10 object-contain" />
-                  </div>
-                )}
+                <Label htmlFor="logo">Logo</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    id="logo" 
+                    type="file" 
+                    accept="image/*"
+                    onChange={handleLogoChange}
+                    className="cursor-pointer"
+                  />
+                  {logoPreview && (
+                    <div className="p-2 bg-muted/30 rounded border inline-block">
+                      <img src={logoPreview} alt="Logo Preview" className="h-10 object-contain" />
+                    </div>
+                  )}
+                </div>
               </div>
 
+              {/* Banner Upload */}
               <div className="space-y-2">
-                <Label htmlFor="headerBannerUrl">Header Banner URL</Label>
-                <Input id="headerBannerUrl" {...form.register("headerBannerUrl")} placeholder="https://example.com/banner.jpg" />
+                <Label htmlFor="banner">Header Banner</Label>
+                <div className="flex gap-2 flex-col">
+                  <Input 
+                    id="banner" 
+                    type="file" 
+                    accept="image/*"
+                    onChange={handleBannerChange}
+                    className="cursor-pointer"
+                  />
+                  {bannerPreview && (
+                    <div className="p-2 bg-muted/30 rounded border inline-block w-full">
+                      <img src={bannerPreview} alt="Banner Preview" className="h-20 w-full object-contain" />
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -181,11 +321,11 @@ export default function Admin() {
              <Button 
                type="submit" 
                size="lg" 
-               disabled={updateConfig.isPending}
+               disabled={updateConfig.isPending || uploading}
                className="min-w-[150px] shadow-lg shadow-primary/20"
                style={{ backgroundColor: form.watch("themeColor") || undefined }}
              >
-               {updateConfig.isPending ? (
+               {updateConfig.isPending || uploading ? (
                  <>
                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
                    Saving...

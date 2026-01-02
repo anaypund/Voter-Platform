@@ -30,7 +30,7 @@ function Router() {
 
   // If trying to access admin without auth, redirect to login
   if (location.startsWith("/admin") && !isAuthenticated) {
-    window.location.href = "/api/login";
+    setLocation("/login");
     return null;
   }
   
