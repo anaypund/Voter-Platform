@@ -31,8 +31,26 @@ export async function registerRoutes(
 
   // Config
   app.get(api.config.get.path, async (req, res) => {
-    const config = await storage.getConfig();
-    res.json(config || {}); 
+    try {
+      const config = await storage.getConfig();
+      if (config) {
+        res.json(config);
+      } else {
+        // Return empty config with required fields
+        res.json({
+          partyName: "",
+          themeColor: "#ff9933",
+          logoUrl: "",
+          headerBannerUrl: "",
+          footerMessage: "",
+          isPublicAccess: false,
+          printTemplate: "default",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching config:", error);
+      res.status(500).json({ message: "Failed to fetch config" });
+    }
   });
 
   app.post(api.config.update.path, adminMiddleware, async (req: any, res: any) => {

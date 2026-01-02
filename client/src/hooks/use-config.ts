@@ -34,7 +34,8 @@ export function useAppConfig() {
       }
     },
     retry: false,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 0, // Always consider data as stale so it refetches when component mounts
+    gcTime: 1000 * 60 * 5, // Keep in cache for 5 minutes for performance
   });
 }
 
@@ -51,7 +52,10 @@ export function useUpdateConfig() {
       if (!res.ok) throw new Error("Failed to update config");
       return api.config.update.responses[200].parse(await res.json());
     },
-    onSuccess: () => {
+    onSuccess: (newConfig) => {
+      // Immediately update the cache with the new config
+      queryClient.setQueryData([api.config.get.path], newConfig);
+      // Also invalidate to refetch fresh data
       queryClient.invalidateQueries({ queryKey: [api.config.get.path] });
     },
   });
