@@ -1,0 +1,190 @@
+Election Voter Search & Slip Printing Platform
+
+Objective - 
+
+Design and develop a mobile-responsive, simple, ultra-fast voter lookup and slip-printing portal used by political party workers during elections.
+
+The platform allows party members to search voter records, verify identities, and generate printable voter slips instantly, even when data is written in Marathi / Hindi / English with spelling inconsistencies.
+
+
+Core Data Source
+
+**MongoDB Atlas Database**
+
+* Database: `data_2026`
+* Collection: `Amravati`
+connection string: "mongodb+srv://anaypund123_db_user:JRzPyxzoxaLIyyWU@cluster0.omhtcr7.mongodb.net/"
+
+Important Fields:
+
+| Field          |
+| -------------- |
+| Index          |
+| Name           |
+| Husband Name   |
+| Age            |
+| Gender         |
+| Yaadi_bhaag_kr |
+| booth          |
+| ward           |
+| ward_address   |
+| epic_no        |
+
+
+User Roles
+
+1. Super Admin (Party HQ)
+
+* Full control over:
+
+  * Theme colors
+  * Logos
+  * Header banners
+  * Website text (all labels, headings, instructions)
+  * Public access toggle
+  * Party branding
+  * Print template designs
+  * User management (create/remove party members)
+
+---
+
+2. Party Member (Field Worker)
+
+* Login access
+* Search voters
+* Verify voter identity
+* Print voter slips (PDF)
+
+---
+
+3. Public User (Optional)
+
+* Only when enabled by Super Admin
+* Can search but cannot modify anything
+
+---
+
+Access Modes
+
+| Mode         | Description                                 |
+| ------------ | ------------------------------------------- |
+| Private Mode | Only logged-in party members can use portal |
+| Public Mode  | Anyone can search voters (read-only)        |
+
+Super Admin can toggle between modes anytime**
+
+
+
+Search System
+
+Search Type 1: EPIC Number Search
+
+* Input: EPIC Number
+* Exact match on `epic_no`
+* Returns single voter card with full details
+
+---
+
+Search Type 2: Person Search (Smart Fuzzy Search)
+
+Mandatory:
+
+* Full Name
+
+Optional:
+
+* Father / Husband Name
+
+Smart Matching Logic
+
+Because data in database exists in Marathi / Hindi / English and often misspelled, system must:
+
+1. Normalize user input
+2. Apply phonetic fuzzy matching
+3. Support Devanagari ↔ English transliteration
+4. Rank results by match probability
+
+Matching Logic:
+
+* Loose regex matching
+* Phonetic algorithms (Soundex / Metaphone-IN)
+* Levenshtein distance
+* Token-wise matching
+
+Top most similar names appear first
+
+---
+
+Results Display
+
+Each result row must show:
+
+* Name
+* Age
+* Gender
+* Booth
+* Ward
+* EPIC No
+* Address
+
+And a PRINT SLIP button
+
+---
+
+Slip Printing System
+
+* Clicking PRINT passes selected record to backend
+* Backend uses **Python + WeasyPrint**
+* Generates high-quality printable PDF voter slip
+* Return success flag to UI to auto-open PDF
+
+---
+
+Fully Configurable Branding System
+
+From Super Admin Panel:
+
+| Configurable Item     |
+| --------------------- |
+| Party logo            |
+| Header banner         |
+| Background colors     |
+| Text labels           |
+| Instructions          |
+| Footer message        |
+| Language              |
+| Print template        |
+| Public/private toggle |
+
+No code change required — everything dynamic
+
+---
+
+---
+
+Tech Expectations (optional, these are just suggestions)
+
+| Layer        | Stack                               |
+| ------------ | ----------------------------------- |
+| Frontend     | React / Vue / Svelte (Mobile First) |
+| Backend      | Node + Python Microservice          |
+| Database     | MongoDB                             |
+| Print Engine | Python + WeasyPrint                 |
+| Auth         | JWT                                 |
+| Admin Panel  | Modular CMS-like                    |
+
+---
+
+System Intelligence Goals
+
+* Smart fuzzy multilingual search
+* Ranked results
+* Automatic spelling forgiveness
+* 2-click voter slip generation
+
+---
+
+ End Goal
+
+A field-proof election day weapon for party workers
+— minimal steps, maximum speed, zero confusion.
