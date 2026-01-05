@@ -8,11 +8,23 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertConfigSchema, type InsertAppConfig } from "@shared/schema";
+import type { InsertAppConfig } from "@shared/schema";
+import { z } from "zod";
 import { Loader2, Save, ArrowLeft, LogOut, Upload } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { redirectToLogin } from "@/lib/auth-utils";
+
+const insertConfigSchema = z.object({
+  partyName: z.string(),
+  themeColor: z.string(),
+  logoUrl: z.string().optional(),
+  headerBannerUrl: z.string().optional(),
+  footerMessage: z.string(),
+  isPublicAccess: z.boolean(),
+  printTemplate: z.string(),
+});
+
 
 export default function Admin() {
   const { user, isLoading: authLoading, logout } = useAuth();

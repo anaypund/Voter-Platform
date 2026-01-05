@@ -1,5 +1,17 @@
 import { z } from "zod";
-import { voterSchema, insertConfigSchema, userSchema } from "./schema";
+import { voterSchema } from "./schema";
+import { userSchema } from "./models/auth";
+
+const insertConfigSchema = z.object({
+  partyName: z.string(),
+  themeColor: z.string(),
+  logoUrl: z.string().optional(),
+  headerBannerUrl: z.string().optional(),
+  footerMessage: z.string(),
+  isPublicAccess: z.boolean(),
+  printTemplate: z.string(),
+});
+
 
 export const api = {
   voters: {
