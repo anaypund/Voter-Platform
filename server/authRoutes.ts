@@ -48,13 +48,29 @@ authRouter.post("/signup", async (req: Request, res: Response) => {
       isAdmin: user.isAdmin,
     });
 
-    // Set secure cookie
-    res.cookie("authToken", token, {
+    // Set secure cookie - use intelligent defaults for remote servers
+    const cookieOptions: any = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    };
+    
+    // Check if this is a cross-origin setup (frontend and backend on different origins)
+    const frontendUrl = process.env.FRONTEND_URL || "";
+    const isDifferentOrigin = frontendUrl && !frontendUrl.includes("localhost") && !frontendUrl.includes("127.0.0.1");
+    
+    if (isDifferentOrigin) {
+      // Cross-origin scenario: use sameSite=none with secure
+      cookieOptions.sameSite = "none";
+      cookieOptions.secure = true;
+    } else {
+      // Same-origin or local: use sameSite=lax
+      cookieOptions.sameSite = "lax";
+      cookieOptions.secure = process.env.NODE_ENV === "production";
+    }
+    
+    console.log(`[SIGNUP] Setting cookie with options:`, cookieOptions);
+    res.cookie("authToken", token, cookieOptions);
 
     res.json({
       user: {
@@ -98,13 +114,29 @@ authRouter.post("/login", async (req: Request, res: Response) => {
       isAdmin: user.isAdmin,
     });
 
-    // Set secure cookie
-    res.cookie("authToken", token, {
+    // Set secure cookie - use intelligent defaults for remote servers
+    const cookieOptions: any = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    };
+    
+    // Check if this is a cross-origin setup (frontend and backend on different origins)
+    const frontendUrl = process.env.FRONTEND_URL || "";
+    const isDifferentOrigin = frontendUrl && !frontendUrl.includes("localhost") && !frontendUrl.includes("127.0.0.1");
+    
+    if (isDifferentOrigin) {
+      // Cross-origin scenario: use sameSite=none with secure
+      cookieOptions.sameSite = "none";
+      cookieOptions.secure = true;
+    } else {
+      // Same-origin or local: use sameSite=lax
+      cookieOptions.sameSite = "lax";
+      cookieOptions.secure = process.env.NODE_ENV === "production";
+    }
+    
+    console.log(`[LOGIN] Setting cookie with options:`, cookieOptions);
+    res.cookie("authToken", token, cookieOptions);
 
     res.json({
       user: {

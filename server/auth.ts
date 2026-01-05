@@ -36,17 +36,26 @@ export function authMiddleware(
   next: NextFunction
 ): void {
   const token = req.cookies.authToken;
+  
+  // Debug logging
+  console.log(`[AUTH] Request to ${req.path}`);
+  console.log(`[AUTH] Cookies received:`, req.cookies);
+  console.log(`[AUTH] Token found:`, !!token);
 
   if (!token) {
+    console.log(`[AUTH] No token found in cookies, returning 401`);
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
 
   const payload = verifyToken(token);
   if (!payload) {
+    console.log(`[AUTH] Token verification failed`);
     res.status(401).json({ message: "Invalid or expired token" });
     return;
   }
+  
+  console.log(`[AUTH] Token verified for user:`, payload.username);
 
   req.user = payload;
   next();
