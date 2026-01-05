@@ -31,6 +31,7 @@ export function useAuth() {
     queryFn: fetchUser,
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    throwOnError: false, // Don't throw errors to console
   });
 
   const logoutMutation = useMutation({

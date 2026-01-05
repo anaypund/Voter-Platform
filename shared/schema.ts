@@ -30,11 +30,11 @@ export type Voter = z.infer<typeof voterSchema>;
    SEARCH REQUEST (FIXES ERROR)
 ============================ */
 export interface SearchVotersRequest {
-  epic?: string;
-  name?: string;
-  booth?: string;
-  ward?: string;
+  type: "epic" | "name" | "booth" | "ward";
+  query: string;
+  subQuery?: string;
 }
+
 
 /* ============================
    APP CONFIG

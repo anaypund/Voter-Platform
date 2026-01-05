@@ -4,10 +4,55 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { connectMongo } from "./mongo";
+import cors from "cors";
 import 'dotenv/config';
 
 
 const app = express();
+
+// Determine allowed origins based on environment
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:8000",
+  "http://localhost:5000",
+  process.env.FRONTEND_URL,
+  process.env.PUBLIC_URL,
+].filter(Boolean);
+
+// Add IP-based origins if provided
+if (process.env.SERVER_IP) {
+  allowedOrigins.push(`http://${process.env.SERVER_IP}`);
+  allowedOrigins.push(`http://${process.env.SERVER_IP}:3000`);
+  allowedOrigins.push(`http://${process.env.SERVER_IP}:5000`);
+}
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.some(allowed => {
+      if (!allowed) return false;
+      return origin.includes(allowed) || origin === allowed;
+    })) {
+      return callback(null, true);
+    }
+    
+    // In development, allow all origins
+    if (process.env.NODE_ENV !== "production") {
+      return callback(null, true);
+    }
+    
+    callback(new Error("CORS not allowed"));
+  },
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+}));
+
 const httpServer = createServer(app);
 
 declare module "http" {
