@@ -96,7 +96,7 @@ def main():
         }}
         @font-face {{
             font-family: "NotoDeva";
-            src: url("NotoSerifDevanagari-VariableFont_wdth,wght.ttf");
+            src: url("public/fonts/NotoSerifDevanagari-VariableFont_wdth,wght.ttf");
         }}
         body {{
             font-family: "NotoDeva";

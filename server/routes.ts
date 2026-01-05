@@ -79,9 +79,9 @@ export async function registerRoutes(
       const fieldNames = Object.keys(obj);
       console.log("Sample voter data keys:", fieldNames);
       console.log("Sample voter full data:", JSON.stringify(obj, null, 2));
-      res.json({ 
+      res.json({
         message: "Sample voter found",
-        fieldNames, 
+        fieldNames,
         sampleData: obj
       });
     } catch (e: any) {
@@ -93,12 +93,12 @@ export async function registerRoutes(
   app.get(api.voters.search.path, requireAuth, async (req, res) => {
     const { type, query, subQuery } = req.query as any;
     try {
-        const results = await storage.searchVoters(type, query, subQuery);
-        console.log(`[API] Search ${type}:${query} - Found ${results.length} results`);
-        console.log(`[API] First result structure:`, results.length > 0 ? Object.keys(results[0]).join(", ") : "No results");
-        res.json(results);
+      const results = await storage.searchVoters(type, query, subQuery);
+      console.log(`[API] Search ${type}:${query} - Found ${results.length} results`);
+      console.log(`[API] First result structure:`, results.length > 0 ? Object.keys(results[0]).join(", ") : "No results");
+      res.json(results);
     } catch (e: any) {
-        res.status(500).json({ message: e.message });
+      res.status(500).json({ message: e.message });
     }
   });
 
@@ -117,7 +117,7 @@ export async function registerRoutes(
 
       // Call Python script to generate PDF using WeasyPrint
       const pythonScript = path.join(process.cwd(), "server", "print_slip.py");
-      
+
       // Convert voter data to plain object for JSON serialization
       const voterDataForPython = {
         Index: voter.Index || '',
@@ -136,8 +136,11 @@ export async function registerRoutes(
       };
 
       return new Promise<void>((resolve, reject) => {
-        const pythonProcess = spawn("python", [pythonScript]);
-        
+        const pythonExecutable = process.platform === "win32"
+          ? ".venv\\Scripts\\python.exe"
+          : ".venv/bin/python";
+        const pythonProcess = spawn(pythonExecutable, [pythonScript]);
+
         let pdfPath = "";
         let errorOutput = "";
 
