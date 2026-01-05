@@ -64,9 +64,14 @@ authRouter.post("/signup", async (req: Request, res: Response) => {
       cookieOptions.sameSite = "none";
       cookieOptions.secure = true;
     } else {
-      // Same-origin or local: use sameSite=lax
+      // Same-origin or local: use sameSite=lax WITHOUT secure on HTTP
       cookieOptions.sameSite = "lax";
-      cookieOptions.secure = process.env.NODE_ENV === "production";
+      // Only set secure=true if explicitly HTTPS
+      if (process.env.FORCE_HTTPS === "true") {
+        cookieOptions.secure = true;
+      } else {
+        cookieOptions.secure = false; // Allow HTTP cookies
+      }
     }
     
     console.log(`[SIGNUP] Setting cookie with options:`, cookieOptions);
@@ -130,9 +135,14 @@ authRouter.post("/login", async (req: Request, res: Response) => {
       cookieOptions.sameSite = "none";
       cookieOptions.secure = true;
     } else {
-      // Same-origin or local: use sameSite=lax
+      // Same-origin or local: use sameSite=lax WITHOUT secure on HTTP
       cookieOptions.sameSite = "lax";
-      cookieOptions.secure = process.env.NODE_ENV === "production";
+      // Only set secure=true if explicitly HTTPS
+      if (process.env.FORCE_HTTPS === "true") {
+        cookieOptions.secure = true;
+      } else {
+        cookieOptions.secure = false; // Allow HTTP cookies
+      }
     }
     
     console.log(`[LOGIN] Setting cookie with options:`, cookieOptions);
