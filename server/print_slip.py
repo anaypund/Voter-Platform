@@ -47,6 +47,13 @@ def main():
         else:
             photo_src = ""
         
+        # Get absolute path to font file
+        script_dir = Path(__file__).parent.parent
+        font_path = script_dir / "public" / "fonts" / "NotoSerifDevanagari-VariableFont_wdth,wght.ttf"
+        
+        # Convert to file:// URL for WeasyPrint
+        font_url = font_path.as_uri()
+        
         # Determine father or husband name
         father_or_husband = ""
         father_name = data.get('Father Name', '').strip()
@@ -96,7 +103,7 @@ def main():
         }}
         @font-face {{
             font-family: "NotoDeva";
-            src: url("public/fonts/NotoSerifDevanagari-VariableFont_wdth,wght.ttf");
+            src: url("{font_url}");
         }}
         body {{
             font-family: "NotoDeva";
