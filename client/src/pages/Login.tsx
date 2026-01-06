@@ -144,7 +144,8 @@ export default function Login() {
               </Button>
             </form>
 
-            <div className="mt-4 text-center text-sm text-muted-foreground">
+            {/* Signup option temporarily disabled */}
+            {/* <div className="mt-4 text-center text-sm text-muted-foreground">
               {isSignup ? (
                 <>
                   Already have an account?{" "}
@@ -176,7 +177,7 @@ export default function Login() {
                   </button>
                 </>
               )}
-            </div>
+            </div> */}
           </CardContent>
           <CardFooter className="bg-muted/30 p-4 text-center text-xs text-muted-foreground">
             Protected area. Authorized personnel only.
