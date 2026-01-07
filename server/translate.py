@@ -16,11 +16,56 @@ try:
         try:
             translator = GoogleTranslator(source='auto', target='mr')
             translated = translator.translate(text=text.strip())
+
+            # Canonicalize the translated text
+            translated = canonicalize_marathi(translated)
             return translated
         except Exception as e:
             print(f"Translation error: {str(e)}", file=sys.stderr)
             # Return original text if translation fails
             return text
+        
+    import re
+
+    def canonicalize_marathi(name: str) -> str:
+        if not name:
+            return ""
+        
+        # Build once and reuse
+        CANONICAL_MAP = {
+            # Retroflex → Dental
+            "ट": "त", "ठ": "थ", "ड": "द", "ढ": "ध", "ण": "न",
+
+            # L
+            "ळ": "ल",
+
+            # S
+            "ष": "श",
+
+            # Long → Short vowels
+            "आ": "अ",
+            "ई": "इ",
+            "ऊ": "उ",
+        }
+
+        name = str(name).strip()
+
+        # 1. Replace unstable characters
+        for src, tgt in CANONICAL_MAP.items():
+            name = name.replace(src, tgt)
+
+        # 2. Normalize combining vowel signs
+        vowel_map = {
+            "ा": "",   # remove long aakar
+            "ी": "ि",
+            "ू": "ु",
+        }
+
+        for src, tgt in vowel_map.items():
+            name = name.replace(src, tgt)
+
+        return name
+
     
     # Read input from command line argument
     if len(sys.argv) > 1:

@@ -116,7 +116,7 @@ def main():
         }}
         .block {{
             width: 46%;
-            height: 15.4rem;
+            height: 15.8rem;
             float: left;
             box-sizing: border-box;
             font-size: 8pt;

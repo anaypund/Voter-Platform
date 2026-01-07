@@ -85,7 +85,7 @@ export class DatabaseStorage implements IStorage {
       // Create an $and condition where each word must match in the Name field
       const filter: any = {
         $and: queryWords.map(word => ({
-          Name: { $regex: word, $options: 'i' }
+          canonical_name: { $regex: word, $options: 'i' }
         }))
       };
       
@@ -104,19 +104,19 @@ export class DatabaseStorage implements IStorage {
         const husbandConditions = subQueryWords.length > 0
           ? {
               $and: subQueryWords.map(word => ({
-                "Husband Name": { $regex: word, $options: 'i' }
+                "canonical_husband_name": { $regex: word, $options: 'i' }
               }))
             }
-          : { "Husband Name": { $ne: "" } };
+          : { "canonical_husband_name": { $ne: "" } };
         
         // Build conditions for Father Name: all words must match
         const fatherConditions = subQueryWords.length > 0
           ? {
               $and: subQueryWords.map(word => ({
-                "Father Name": { $regex: word, $options: 'i' }
+                "canonical_father_name": { $regex: word, $options: 'i' }
               }))
             }
-          : { "Father Name": { $ne: "" } };
+          : { "canonical_father_name": { $ne: "" } };
         
         // Add the OR condition for relative name matching
         filter.$and.push({
