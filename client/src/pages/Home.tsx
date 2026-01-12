@@ -364,10 +364,10 @@ export default function Home() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 50 }}
                       transition={{ duration: 0.2 }}
-                      className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50"
+                      className="fixed bottom-4 left-4 right-4 md:left-1/2 md:right-auto md:bottom-8 md:transform md:-translate-x-1/2 z-50 max-w-full md:max-w-fit"
                     >
                       <div 
-                        className="bg-card border-2 rounded-2xl shadow-2xl px-6 py-4 flex items-center gap-4"
+                        className="bg-card border-2 rounded-2xl shadow-2xl px-4 py-3 md:px-6 md:py-4 flex flex-wrap items-center gap-3 md:gap-4 justify-center"
                         style={{ borderColor: themeColor }}
                       >
                         <div className="flex items-center gap-2">
@@ -397,7 +397,8 @@ export default function Home() {
                             ) : (
                               <>
                                 <Share2 className="w-4 h-4" />
-                                Generate PDF
+                                <span className="hidden sm:inline">Generate PDF</span>
+                                <span className="sm:hidden">Generate</span>
                               </>
                             )}
                           </Button>
@@ -415,7 +416,8 @@ export default function Home() {
                             ) : (
                               <>
                                 <Share2 className="w-4 h-4" />
-                                Share PDF ({generatedPDF.voterCount})
+                                <span className="hidden sm:inline">Share PDF ({generatedPDF.voterCount})</span>
+                                <span className="sm:hidden">Share ({generatedPDF.voterCount})</span>
                               </>
                             )}
                           </Button>
