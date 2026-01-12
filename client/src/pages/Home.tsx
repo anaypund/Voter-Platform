@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useVoterSearch } from "@/hooks/use-voters";
+import { useVoterSearch, useGenerateBulkPDF, useShareGeneratedPDF } from "@/hooks/use-voters";
 import { useAppConfig } from "@/hooks/use-config";
 import { VoterCard } from "@/components/VoterCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Loader2, AlertCircle, LogOut } from "lucide-react";
+import { Search, Loader2, AlertCircle, LogOut, Share2, CheckSquare, Square } from "lucide-react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -17,6 +17,8 @@ export default function Home() {
   const { user, logout } = useAuth();
   const { data: config } = useAppConfig();
   const [searchParams, setSearchParams] = useState<SearchVotersRequest | null>(null);
+  const [selectedVoterIds, setSelectedVoterIds] = useState<Set<string>>(new Set());
+  const [generatedPDF, setGeneratedPDF] = useState<{ blob: Blob; voterCount: number } | null>(null);
 
   const resultsRef = useRef<HTMLDivElement | null>(null);
   
@@ -28,6 +30,8 @@ export default function Home() {
   const [subQuery, setSubQuery] = useState(""); // Husband/Father Name
 
   const { data: voters, isLoading, error } = useVoterSearch(searchParams);
+  const generateBulkPDF = useGenerateBulkPDF();
+  const shareGeneratedPDF = useShareGeneratedPDF();
   
   const scrollToResults = () => {
     setTimeout(() => {
@@ -39,6 +43,7 @@ export default function Home() {
     e.preventDefault();
     if (!epicQuery.trim()) return;
     setSearchParams({ type: "epic", query: epicQuery });
+    setSelectedVoterIds(new Set()); // Clear selections on new search
     scrollToResults();
   };
 
@@ -46,7 +51,59 @@ export default function Home() {
     e.preventDefault();
     if (!nameQuery.trim()) return;
     setSearchParams({ type: "name", query: nameQuery, subQuery });
+    setSelectedVoterIds(new Set()); // Clear selections on new search
     scrollToResults();
+  };
+
+  const handleSelectionChange = (voterId: string, selected: boolean) => {
+    setSelectedVoterIds(prev => {
+      const newSet = new Set(prev);
+      if (selected) {
+        newSet.add(voterId);
+      } else {
+        newSet.delete(voterId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (voters) {
+      setSelectedVoterIds(new Set(voters.map(v => v._id || "")));
+    }
+  };
+
+  const handleClearAll = () => {
+    setSelectedVoterIds(new Set());
+    setGeneratedPDF(null); // Clear generated PDF when clearing selections
+  };
+
+  const handleGeneratePDF = async () => {
+    if (selectedVoterIds.size ===  0) return;
+    
+    try {
+      const result = await generateBulkPDF.mutateAsync({ 
+        voterIds: Array.from(selectedVoterIds), 
+        lang: "hi" 
+      });
+      // Store the generated PDF
+      setGeneratedPDF(result);
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+    }
+  };
+
+  const handleSharePDF = async () => {
+    if (!generatedPDF) return;
+    
+    try {
+      await shareGeneratedPDF.mutateAsync(generatedPDF);
+      // Clear selections and PDF after successful share
+      setSelectedVoterIds(new Set());
+      setGeneratedPDF(null);
+    } catch (error) {
+      console.error("Share failed:", error);
+    }
   };
 
 
@@ -244,7 +301,38 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold text-lg">
                     Found {voters.length} Result{voters.length !== 1 ? 's' : ''}
+                    {selectedVoterIds.size > 0 && (
+                      <span className="ml-3 text-sm font-normal text-muted-foreground">
+                        ({selectedVoterIds.size} selected)
+                      </span>
+                    )}
                   </h3>
+                  
+                  {voters.length > 1 && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSelectAll}
+                        disabled={selectedVoterIds.size === voters.length}
+                        className="gap-1"
+                      >
+                        <CheckSquare className="w-4 h-4" />
+                        Select All
+                      </Button>
+                      {selectedVoterIds.size > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleClearAll}
+                          className="gap-1"
+                        >
+                          <Square className="w-4 h-4" />
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -257,11 +345,85 @@ export default function Home() {
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <VoterCard voter={voter} themeColor={themeColor} />
+                        <VoterCard 
+                          voter={voter} 
+                          themeColor={themeColor}
+                          isSelected={selectedVoterIds.has(voter._id || "")}
+                          onSelectionChange={handleSelectionChange}
+                        />
                       </motion.div>
                     ))}
                   </AnimatePresence>
                 </div>
+
+                {/* Floating Action Bar for Bulk Share */}
+                <AnimatePresence>
+                  {selectedVoterIds.size > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 50 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 50 }}
+                      transition={{ duration: 0.2 }}
+                      className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50"
+                    >
+                      <div 
+                        className="bg-card border-2 rounded-2xl shadow-2xl px-6 py-4 flex items-center gap-4"
+                        style={{ borderColor: themeColor }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                            style={{ backgroundColor: themeColor }}
+                          >
+                            {selectedVoterIds.size}
+                          </div>
+                          <span className="font-medium">
+                            {selectedVoterIds.size} voter{selectedVoterIds.size !== 1 ? 's' : ''} selected
+                          </span>
+                        </div>
+                        
+                        {!generatedPDF ? (
+                          <Button
+                            onClick={handleGeneratePDF}
+                            disabled={generateBulkPDF.isPending}
+                            className="gap-2 font-semibold shadow-lg hover:shadow-xl transition-all"
+                            style={{ backgroundColor: themeColor, borderColor: themeColor }}
+                          >
+                            {generateBulkPDF.isPending ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Generating PDF...
+                              </>
+                            ) : (
+                              <>
+                                <Share2 className="w-4 h-4" />
+                                Generate PDF
+                              </>
+                            )}
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={handleSharePDF}
+                            disabled={shareGeneratedPDF.isPending}
+                            className="gap-2 font-semibold shadow-lg hover:shadow-xl transition-all bg-green-600 hover:bg-green-700"
+                          >
+                            {shareGeneratedPDF.isPending ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Sharing...
+                              </>
+                            ) : (
+                              <>
+                                <Share2 className="w-4 h-4" />
+                                Share PDF ({generatedPDF.voterCount})
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
           </div>

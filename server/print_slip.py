@@ -37,6 +37,12 @@ def main():
         input_text = sys.stdin.read()
         data = json.loads(input_text)
         
+        # Check if data is an array or single object
+        if isinstance(data, list):
+            voters = data
+        else:
+            voters = [data]  # Wrap single voter in array
+        
         # Get photo path from arguments or use default
         photo_path = sys.argv[1] if len(sys.argv) > 1 else "public/images/Slip-banner.jpg"
         
@@ -54,41 +60,45 @@ def main():
         # Convert to file:// URL for WeasyPrint
         font_url = font_path.as_uri()
         
-        # Determine father or husband name
-        father_or_husband = ""
-        father_name = data.get('Father Name', '').strip()
-        husband_name = data.get('Husband Name', '').strip()
-        
-        if father_name:
-            father_or_husband = f"वडिलांचे नाव: {father_name}"
-        elif husband_name:
-            father_or_husband = f"पतीचे नाव: {husband_name}"
-        
-        house_no = str(data.get('House_Number', '')).strip()
-        if not house_no:
-            house_no = ''
-        
-        # Create single block HTML
-        block = f"""
+        # Generate blocks for all voters
+        blocks_html = ""
+        for voter_data in voters:
+            # Determine father or husband name
+            father_or_husband = ""
+            father_name = voter_data.get('Father Name', '').strip()
+            husband_name = voter_data.get('Husband Name', '').strip()
+            
+            if father_name:
+                father_or_husband = f"वडिलांचे नाव: {father_name}"
+            elif husband_name:
+                father_or_husband = f"पतीचे नाव: {husband_name}"
+            
+            house_no = str(voter_data.get('House_Number', '')).strip()
+            if not house_no:
+                house_no = ''
+            
+            # Create block HTML for this voter
+            block = f"""
         <div class="block">
             <div class="block-photo-wrapper">
                 <img src="{photo_src}" class="block-photo" alt="Photo" />
             </div>
             <div class="block-text">
-                <div class="line1">अमरावती महानगरपालिका  &nbsp;&nbsp;  प्रभाग क्र : {data.get('ward', '')}</div>
-                <div class="line1">यादी भाग क्र. {data.get('Yaadi_bhaag_kr', '')} &nbsp;&nbsp; {data.get('Yaadi_bhaag_address', '')}</div>
+                <div class="line1">अमरावती महानगरपालिका  &nbsp;&nbsp;  प्रभाग क्र : {voter_data.get('ward', '')}</div>
+                <div class="line1">यादी भाग क्र. {voter_data.get('Yaadi_bhaag_kr', '')} &nbsp;&nbsp; {voter_data.get('Yaadi_bhaag_address', '')}</div>
                 <div class="spacer"></div>
                 <div class="row-split">
-                    <span>अ.क्र.: {data.get('Index', '')}</span>
-                    <span class="epic">EPIC: {data.get('epic_no', '')}</span>
+                    <span>अ.क्र.: {voter_data.get('Index', '')}</span>
+                    <span class="epic">EPIC: {voter_data.get('epic_no', '')}</span>
                 </div>
-                <div>मतदाराचे नाव: {data.get('Name', '')}</div>
+                <div>मतदाराचे नाव: {voter_data.get('Name', '')}</div>
                 <div>{father_or_husband}</div>
-                <div>घर क्रमांक: {house_no} &nbsp;&nbsp; वय : {data.get('Age', '')} &nbsp;&nbsp; लिंग : {data.get('Gender', '')}</div>
-                <div> मतदान केंद्र: {data.get('booth', '')}</div>
+                <div>घर क्रमांक: {house_no} &nbsp;&nbsp; वय : {voter_data.get('Age', '')} &nbsp;&nbsp; लिंग : {voter_data.get('Gender', '')}</div>
+                <div> मतदान केंद्र: {voter_data.get('booth', '')}</div>
             </div>
         </div>
         """
+            blocks_html += block
         
         # Create HTML with exact design from your working script
         html_text = f"""
@@ -125,7 +135,7 @@ def main():
             justify-content: flex-start;
             margin: 12px;
             margin-left: 18px;
-            margin-bottom: 28px;
+            margin-bottom: 18px;
             border: 1.5px solid #333;
             background: #fff;
         }}
@@ -175,7 +185,7 @@ def main():
         </style>
         </head>
         <body>
-        {block}
+        {blocks_html}
         </body>
         </html>
         """

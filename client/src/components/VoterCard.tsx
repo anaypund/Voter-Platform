@@ -1,6 +1,7 @@
 import { Voter } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Printer, User, MapPin, Share2 } from "lucide-react";
 import { usePrintSlip, useShareSlip } from "@/hooks/use-voters";
 import { useState } from "react";
@@ -9,9 +10,11 @@ import { Loader2 } from "lucide-react";
 interface VoterCardProps {
   voter: Voter;
   themeColor?: string;
+  isSelected?: boolean;
+  onSelectionChange?: (voterId: string, selected: boolean) => void;
 }
 
-export function VoterCard({ voter, themeColor }: VoterCardProps) {
+export function VoterCard({ voter, themeColor, isSelected = false, onSelectionChange }: VoterCardProps) {
   const printSlip = usePrintSlip();
   const shareSlip = useShareSlip();
   const [isPrinting, setIsPrinting] = useState(false);
@@ -43,7 +46,14 @@ export function VoterCard({ voter, themeColor }: VoterCardProps) {
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-l-4" style={{ borderLeftColor: themeColor || "var(--primary)" }}>
+    <Card 
+      className={`overflow-hidden hover:shadow-lg transition-all duration-300 border-l-4 ${
+        isSelected ? 'ring-2 ring-offset-2 shadow-xl' : ''
+      }`}
+      style={{ 
+        borderLeftColor: themeColor || "var(--primary)"
+      }}
+    >
       <CardHeader className="bg-secondary/30 p-4 pb-2">
         <div className="flex justify-between items-start">
           <div>
@@ -87,10 +97,30 @@ export function VoterCard({ voter, themeColor }: VoterCardProps) {
            <p className="mt-1 text-xs text-muted-foreground pl-6">यादि भाग क्र. {voter.Yaadi_bhaag_kr || "N/A"}: {voter.Yaadi_bhaag_address || "N/A"}</p>
         </div>
       </CardContent>
-      <CardFooter className="p-4 bg-muted/20 border-t flex gap-2">
+      <CardFooter className="p-4 bg-muted/20 border-t flex items-center gap-3">
+        {onSelectionChange && (
+          <div className="flex items-center gap-2">
+            <Checkbox 
+              id={`select-${voter._id}`}
+              checked={isSelected}
+              onCheckedChange={(checked) => onSelectionChange(voter._id || "", !!checked)}
+              className="w-5 h-5"
+              style={{ 
+                borderColor: isSelected ? themeColor : undefined,
+              }}
+            />
+            <label 
+              htmlFor={`select-${voter._id}`}
+              className="text-sm font-medium cursor-pointer select-none"
+            >
+              Select
+            </label>
+          </div>
+        )}
+        
         <Button 
           onClick={handlePrint} 
-          disabled={isPrinting || isSharing}
+          disabled={isPrinting}
           className="flex-1 gap-2 font-semibold shadow-md hover:shadow-lg transition-all"
           style={{ backgroundColor: themeColor, borderColor: themeColor }}
         >
@@ -103,25 +133,6 @@ export function VoterCard({ voter, themeColor }: VoterCardProps) {
             <>
               <Printer className="w-4 h-4" />
               Print
-            </>
-          )}
-        </Button>
-        
-        <Button 
-          onClick={handleShare} 
-          disabled={isSharing || isPrinting}
-          className="flex-1 gap-2 font-semibold shadow-md hover:shadow-lg transition-all"
-          style={{ backgroundColor: themeColor, borderColor: themeColor }}
-        >
-          {isSharing ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Sharing...
-            </>
-          ) : (
-            <>
-              <Share2 className="w-4 h-4" />
-              Share
             </>
           )}
         </Button>

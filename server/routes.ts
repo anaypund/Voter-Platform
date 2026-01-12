@@ -227,5 +227,140 @@ export async function registerRoutes(
     }
   });
 
+  // Bulk print endpoint for multiple voters
+  app.post(api.voters.bulkPrintSlip.path, async (req, res) => {
+    try {
+      const { voterIds, lang } = req.body;
+
+      if (!voterIds || !Array.isArray(voterIds) || voterIds.length === 0) {
+        return res.status(400).json({ message: "Invalid voter IDs array" });
+      }
+
+      console.log(`📄 Generating bulk PDF for ${voterIds.length} voters...`);
+
+      // Fetch all voters
+      const voters = await Promise.all(
+        voterIds.map(id => storage.getVoter(id))
+      );
+
+      // Filter out any null voters
+      const validVoters = voters.filter(v => v !== null);
+
+      if (validVoters.length === 0) {
+        return res.status(404).json({ message: "No valid voters found" });
+      }
+
+      // Convert voter data to plain objects for JSON serialization
+      const votersDataForPython = validVoters.map(voter => ({
+        Index: voter!.Index || '',
+        Name: voter!.Name || '',
+        'Father Name': voter!['Father Name'] || '',
+        'Husband Name': voter!['Husband Name'] || '',
+        House_Number: voter!['House Number'] || '',
+        Age: voter!.Age || '',
+        Gender: voter!.Gender || '',
+        Yaadi_bhaag_kr: voter!.Yaadi_bhaag_kr || '',
+        booth: voter!.booth || '',
+        ward: voter!.ward || voter!.ward_no || '',
+        corporation: voter!.corporation || '',
+        Yaadi_bhaag_address: voter!.Yaadi_bhaag_address || '',
+        epic_no: voter!.epic_no || '',
+      }));
+
+      // Call Python script to generate PDF using WeasyPrint
+      const pythonScript = path.join(process.cwd(), "server", "print_slip.py");
+
+      return new Promise<void>((resolve, reject) => {
+        const pythonExecutable = process.platform === "win32"
+          ? ".venv\\Scripts\\python.exe"
+          : ".venv/bin/python";
+        const pythonProcess = spawn(pythonExecutable, [pythonScript]);
+
+        let pdfPath = "";
+        let errorOutput = "";
+
+        // Handle stdout data  
+        if (pythonProcess.stdout) {
+          pythonProcess.stdout.on("data", (data: any) => {
+            const line = data.toString().trim();
+            if (line && !line.includes("Fontconfig") && !line.includes("Error")) {
+              pdfPath = line;
+              console.log(`PDF generated at: ${pdfPath}`);
+            }
+          });
+        }
+
+        // Handle stderr data
+        if (pythonProcess.stderr) {
+          pythonProcess.stderr.on("data", (data: any) => {
+            const errorLine = data.toString().trim();
+            if (errorLine && !errorLine.includes("Fontconfig")) {
+              errorOutput += errorLine + "\n";
+              console.error(`Python error: ${errorLine}`);
+            }
+          });
+        }
+
+        pythonProcess.on("close", (code: any) => {
+          if (code !== 0) {
+            console.error("Python script failed with code", code, ":", errorOutput);
+            res.status(500).json({
+              message: "Failed to generate PDF",
+              error: errorOutput || "Unknown error",
+            });
+            reject(new Error(errorOutput));
+            return;
+          }
+
+          if (!pdfPath || !fs.existsSync(pdfPath)) {
+            console.error("PDF file not found at:", pdfPath, "exists:", fs.existsSync(pdfPath || ""));
+            res.status(500).json({ message: "PDF file not generated" });
+            reject(new Error("PDF file not found"));
+            return;
+          }
+
+          // Send the PDF to the client
+          res.contentType("application/pdf");
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="voter-slips-${voterIds.length}.pdf"`
+          );
+
+          const stream = fs.createReadStream(pdfPath);
+          stream.pipe(res);
+
+          // Clean up the temporary file after sending
+          stream.on("end", () => {
+            fs.unlink(pdfPath, (err) => {
+              if (err) console.error("Failed to delete temp PDF:", err);
+              else console.log(`✅ Temporary PDF deleted: ${pdfPath}`);
+            });
+          });
+
+          stream.on("error", (err) => {
+            console.error("Stream error:", err);
+            if (!res.headersSent) {
+              res.status(500).json({ message: "Error downloading PDF" });
+            }
+            reject(err);
+          });
+
+          resolve();
+        });
+
+        // Send voter data array to Python script via stdin
+        const jsonData = JSON.stringify(votersDataForPython);
+        pythonProcess.stdin?.write(jsonData);
+        pythonProcess.stdin?.end();
+      });
+    } catch (error) {
+      console.error("Bulk print slip error:", error);
+      res.status(500).json({
+        message: "Failed to generate bulk print slip",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   return httpServer;
 }

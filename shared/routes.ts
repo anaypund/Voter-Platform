@@ -42,6 +42,17 @@ export const api = {
         200: z.any(), // PDF Stream
       },
     },
+    bulkPrintSlip: {
+      method: "POST" as const,
+      path: "/api/voters/bulk-print",
+      input: z.object({
+        voterIds: z.array(z.string()),
+        lang: z.string().optional(),
+      }),
+      responses: {
+        200: z.any(), // PDF Stream
+      },
+    },
   },
   config: {
     get: {
